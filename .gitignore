@@ -27,3 +27,16 @@
 *.exe
 *.out
 *.app
+
+#others
+*.dep
+*.manifest
+*.res
+*.ilk
+*.ib_tag
+*.pdb
+*.ib_pdb_index
+*.idb
+*.ncb
+*.suo
+*.user
