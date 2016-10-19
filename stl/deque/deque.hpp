@@ -288,8 +288,8 @@ private:
 	pointer _Myfirst;	// pointer to beginning of array
 	size_type _Mycap;	// capacity of buffer
 
-	//real data is [head,tail)
-	//buffer d is cycle, that is to say, next(len(d)-1)=0, prev(0)=len(d)-1
+	//real data is [_Myhead,_Mytail)
+	//buffer d is cycle, that is to say, next(_Mycap-1)=0, prev(0)=_Mycap-1
 	//so if tail<head, data is [head, end, 0, tail)
 	//head point to the first elem  available for read
 	//tail point to the first space available for write
