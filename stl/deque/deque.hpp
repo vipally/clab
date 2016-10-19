@@ -2,11 +2,9 @@
 	created:	2016/10/19
 	created:	19:10:2016   15:41
 	filename: 	deque.hpp
-	file base:	deque
-	file ext:	hpp
-	author:		Ally(vipally@gmail.com)
+	author:		Ally Dale(vipally@gmail.com)
 	
-	purpose:	Cycle buffered deque implementation
+	purpose:	Cycle buffered deque implementation based on STL
 *********************************************************************/
 #ifndef _EXT_DEQUE_
 #define _EXT_DEQUE_
@@ -91,7 +89,7 @@ protected:
 	}
 
 	typedef typename _Alloc::template
-		std::rebind<_Ty>::other _Alty;
+		rebind<_Ty>::other _Alty;
 
 	_Alty _Alval;	// allocator object for values
 };
@@ -121,13 +119,15 @@ public:
 public:
 	deque()
 		: _Myhead(0), _Mytail(0), _Mycap(0), _Myfirst(0)
-	{}
+	{
+		_Buy(8);//initialze 8 space
+	}
 	~deque(){
 		_Tidy();
 	}
 
 	bool empty() const{
-		return _Myhead ==_Mytail
+		return _Myhead ==_Mytail;
 	}
 
 	size_type capacity() const{
@@ -138,7 +138,7 @@ public:
 		if (_Mytail >= _Myhead){
 			return (size_type)(_Mytail - _Myhead);
 		} else{
-			return _Mycap + (size_type)(_Myhead - _Mytail);
+			return _Mycap - (size_type)(_Myhead - _Mytail);
 		}
 	}
 
@@ -176,47 +176,48 @@ public:
 	
 	void push_front(const value_type &_Val){
 		_Myhead = _Prev(_Myhead);
-		_STDEXT stdeunchecked_uninitialized_fill_n(_Myfirst+_Myhead, 1, _Val, this->_Alval);
-		if (_Myhead = _Mytail){//buffer full
+		_STDEXT unchecked_uninitialized_fill_n(_Myfirst+_Myhead, 1, _Val, this->_Alval);
+		if (_Myhead == _Mytail){//buffer full
+			_Buy(2*_Mycap);
 		}
 
 	}
 
 	void push_back(const value_type &_Val){
-		_STDEXT stdeunchecked_uninitialized_fill_n(_Myfirst+_Mytail, 1, _Val, this->_Alval);
+		_STDEXT unchecked_uninitialized_fill_n(_Myfirst+_Mytail, 1, _Val, this->_Alval);
 		_Mytail = _Next(_Mytail);
-		if (_Myhead = _Mytail){//buffer full
+		if (_Myhead == _Mytail){//buffer full
+			_Buy(2*_Mycap);
 		}
 	}
 
-	bool pop_front(const value_type &v){
+	bool pop_front(){
 		if (empty()){
 			return false;
 		}
 		_Destroy(_Myhead);
-		_Myhead++;
-		if (_Myhead >= _Mycap)
-		{
-			_Myhead = 0;
-		}
+		_Myhead=_Next(_Myhead);
 		
 		return true;
 	}
 
-	bool pop_back(const value_type &v){
+	bool pop_back(){
 		if (empty()){
 			return false;
 		}
-		_Mytail--;
-		if (_Mytail < 0)
-		{
-			_Mytail = _Mycap - 1;
-		}
+		_Mytail = _Prev(_Mytail);
 		_Destroy(_Mytail);
 		return true;
 	}
 
 	bool shrink(){
+		size_type oldCap = capacity();
+		size_type oldSize = size();
+		if (oldCap > 8 && oldCap >= 3*oldSize){
+			_Buy(oldCap/2);
+			return true;
+		}
+		return false;
 	}
 
 protected:
@@ -243,8 +244,35 @@ protected:
 		_Myhead = 0;
 		_Mytail = 0;
 	}
+	void _Buy(size_type cap){
+		if (cap <= size()){
+			//assert(0);
+			//_DEBUG_ERROR("deque new cap <= size");
+			return;
+		}
+		pointer old = _Myfirst;
+		_Myfirst = this->_Alval.allocate(cap);
+		if (_Myhead != _Mytail){
+			if (_Myhead <= _Mytail){
+				_STDEXT _Unchecked_uninitialized_move(old+_Myhead, old+_Mytail, _Myfirst, this->_Alval);
+				_Mytail -= _Myhead;
+				_Myhead = 0;
+			} else {
+				size_type oldSize = size();
+				_STDEXT _Unchecked_uninitialized_move(old+_Myhead, old+_Mycap, _Myfirst, this->_Alval);
+				_STDEXT _Unchecked_uninitialized_move(old, old+_Mytail, _Myfirst+_Mycap-_Myhead, this->_Alval);
+				_Myhead = 0;
+				_Mytail = oldSize;
+			}
+		}
+		if (old!=0){
+			this->_Alval.deallocate(old, _Mycap);
+		}
+		_Mycap = cap;
+	}
+
 	difference_type _Next(difference_type d) const{
-		if (++d >= _Mycap){
+		if (++d >= difference_type(_Mycap)){
 			d = 0;
 		}
 		return d;
@@ -255,9 +283,16 @@ protected:
 		}
 		return d;
 	}
+
 private:
 	pointer _Myfirst;	// pointer to beginning of array
-	size_type _Mycap;	// pointer to current end of sequence
+	size_type _Mycap;	// capacity of buffer
+
+	//real data is [head,tail)
+	//buffer d is cycle, that is to say, next(len(d)-1)=0, prev(0)=len(d)-1
+	//so if tail<head, data is [head, end, 0, tail)
+	//head point to the first elem  available for read
+	//tail point to the first space available for write
 	difference_type _Myhead, _Mytail;//head and tail of deque
 };//deque
 
