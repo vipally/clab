@@ -1,11 +1,14 @@
-/********************************************************************
-	created:	2016/10/19
-	created:	19:10:2016   15:41
-	filename: 	deque.hpp
-	author:		Ally Dale(vipally@gmail.com)
-	
-	purpose:	Cycle buffered deque implementation based on STL
-*********************************************************************/
+///********************************************************************
+//	CopyRight 2016 @Ally Dale. All rights reserved.
+//	created:	2016/10/19
+//	created:	19:10:2016   15:41
+//	filename: 	deque.hpp
+//	author:		Ally Dale(vipally@gmail.com)
+//	Blog   :    http://blog.csdn.net/vipally
+//	Site   :    https://github.com/vipally
+//	
+//	purpose:	Cycle buffered deque implementation based on STL
+//*********************************************************************/
 #ifndef _EXT_DEQUE_
 #define _EXT_DEQUE_
 #include <memory>
@@ -127,7 +130,7 @@ public:
 	}
 
 	bool empty() const{
-		return _Myhead ==_Mytail;
+		return _Myhead == _Mytail;
 	}
 
 	size_type capacity() const{
