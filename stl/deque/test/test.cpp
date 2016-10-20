@@ -12,7 +12,7 @@
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-	const int MAX_SIZE=10000000;
+	const int MAX_SIZE=100000;
 	do 
 	{
 		clock_t s=clock();

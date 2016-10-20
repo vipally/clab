@@ -118,7 +118,7 @@ public:
 	//typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 public:
 	deque()
-		: _Myhead(0), _Mytail(0), _Mycap(0), _Myfirst(0)
+		: _Myhead(0), _Mytail(0), _Mylast(0), _Myfirst(0)
 	{
 		_Buy(8);//initialze 8 space
 	}
@@ -131,14 +131,14 @@ public:
 	}
 
 	size_type capacity() const{
-		return _Mycap;
+		return _Mylast - _Myfirst;
 	}
 
 	size_type size() const{
 		if (_Mytail >= _Myhead){
 			return (size_type)(_Mytail - _Myhead);
 		} else{
-			return _Mycap - (size_type)(_Myhead - _Mytail);
+			return capacity() - (size_type)(_Myhead - _Mytail);
 		}
 	}
 
@@ -147,7 +147,7 @@ public:
 			_DEBUG_ERROR("empty deque not dereferencable");
 			_SCL_SECURE_TRAITS_OUT_OF_RANGE;
 		}
-		return ((reference)*(_Myfirst+_Myhead));
+		return ((reference)*(_Myhead));
 	}
 
 	const_reference front() const{
@@ -155,7 +155,7 @@ public:
 			_DEBUG_ERROR("empty deque not dereferencable");
 			_SCL_SECURE_TRAITS_OUT_OF_RANGE;
 		}
-		return ((const_reference)*(_Myfirst+_Myhead));
+		return ((const_reference)*(_Myhead));
 	}
 
 	reference back(){
@@ -163,7 +163,7 @@ public:
 			_DEBUG_ERROR("empty deque not dereferencable");
 			_SCL_SECURE_TRAITS_OUT_OF_RANGE;
 		}
-		return ((reference)*(_Myfirst+_Prev(_Mytail)));
+		return ((reference)*(_Prev(_Mytail)));
 	}
 
 	const_reference back() const{
@@ -171,23 +171,23 @@ public:
 			_DEBUG_ERROR("empty deque not dereferencable");
 			_SCL_SECURE_TRAITS_OUT_OF_RANGE;
 		}
-		return ((const_reference)*(_Myfirst+_Prev(_Mytail)));
+		return ((const_reference)*(_Prev(_Mytail)));
 	}
 	
 	void push_front(const value_type &_Val){
 		_Myhead = _Prev(_Myhead);
-		_STDEXT unchecked_uninitialized_fill_n(_Myfirst+_Myhead, 1, _Val, this->_Alval);
+		_STDEXT unchecked_uninitialized_fill_n(_Myhead, 1, _Val, this->_Alval);
 		if (_Myhead == _Mytail){//buffer full
-			_Buy(2*_Mycap);
+			_Buy(2*capacity());
 		}
 
 	}
 
 	void push_back(const value_type &_Val){
-		_STDEXT unchecked_uninitialized_fill_n(_Myfirst+_Mytail, 1, _Val, this->_Alval);
+		_STDEXT unchecked_uninitialized_fill_n(_Mytail, 1, _Val, this->_Alval);
 		_Mytail = _Next(_Mytail);
 		if (_Myhead == _Mytail){//buffer full
-			_Buy(2*_Mycap);
+			_Buy(2*capacity());
 		}
 	}
 
@@ -221,9 +221,9 @@ public:
 	}
 
 protected:
-	void _Destroy(difference_type idx)
+	void _Destroy(pointer p)
 	{	// destroy [_First, _Last) using allocator
-		std::_Destroy_range(_Myfirst+idx, _Myfirst+idx+1, this->_Alval);
+		std::_Destroy_range(p, p+1, this->_Alval);
 	}
 	void _Tidy(){
 		if (_Myfirst != 0){
@@ -231,16 +231,16 @@ protected:
 			{
 				if (_Mytail >= _Myhead)
 				{
-					std::_Destroy_range(_Myfirst+_Myhead, _Myfirst+_Mytail, this->_Alval);
+					std::_Destroy_range(_Myhead, _Mytail, this->_Alval);
 				}else{
-					std::_Destroy_range(_Myfirst+_Myhead, _Myfirst+_Mycap, this->_Alval);
-					std::_Destroy_range(_Myfirst, _Myfirst+_Mytail, this->_Alval);
+					std::_Destroy_range(_Myhead, _Mylast, this->_Alval);
+					std::_Destroy_range(_Myfirst, _Mytail, this->_Alval);
 				}
 			}
-			this->_Alval.deallocate(_Myfirst, _Mycap);
+			this->_Alval.deallocate(_Myfirst, capacity());
 		}
 		_Myfirst = 0;
-		_Mycap = 0;
+		_Mylast = 0;
 		_Myhead = 0;
 		_Mytail = 0;
 	}
@@ -251,49 +251,52 @@ protected:
 			return;
 		}
 		pointer old = _Myfirst;
+		size_type oldCap = capacity();
 		_Myfirst = this->_Alval.allocate(cap);
-		if (_Myhead != _Mytail){
-			if (_Myhead <= _Mytail){
-				_STDEXT _Unchecked_uninitialized_move(old+_Myhead, old+_Mytail, _Myfirst, this->_Alval);
-				_Mytail -= _Myhead;
-				_Myhead = 0;
-			} else {
-				size_type oldSize = size();
-				_STDEXT _Unchecked_uninitialized_move(old+_Myhead, old+_Mycap, _Myfirst, this->_Alval);
-				_STDEXT _Unchecked_uninitialized_move(old, old+_Mytail, _Myfirst+_Mycap-_Myhead, this->_Alval);
-				_Myhead = 0;
-				_Mytail = oldSize;
-			}
+		if (_Myhead <= _Mytail){
+			_STDEXT _Unchecked_uninitialized_move(_Myhead, _Mytail, _Myfirst, this->_Alval);
+			_Mytail = _Myfirst + (_Mytail - _Myhead);
+			_Myhead = _Myfirst;
+		} else {
+			size_type oldSize = size();
+			size_type oldCap = capacity();
+
+			_STDEXT _Unchecked_uninitialized_move(_Myhead, _Mylast, _Myfirst, this->_Alval);
+			_STDEXT _Unchecked_uninitialized_move(old, _Mytail, _Myfirst + (_Mylast-_Myhead), this->_Alval);
+			_Myhead = _Myfirst;
+			_Mytail = _Myfirst + oldCap;
 		}
 		if (old!=0){
-			this->_Alval.deallocate(old, _Mycap);
+			this->_Alval.deallocate(old, oldCap);
 		}
-		_Mycap = cap;
+		_Mylast = _Myfirst + cap;
 	}
 
-	difference_type _Next(difference_type d) const{
-		if (++d >= difference_type(_Mycap)){
-			d = 0;
+	pointer _Next(pointer d) const{
+		if (++d >= _Mylast){
+			d = _Myfirst;
 		}
 		return d;
 	}
-	difference_type _Prev(difference_type d) const{
-		if (--d < 0){
-			d = _Mycap - 1;
+	pointer _Prev(pointer d) const{
+		if (--d < _Myfirst){
+			d = _Mylast - 1;
 		}
 		return d;
 	}
 
 private:
-	pointer _Myfirst;	// pointer to beginning of array
-	size_type _Mycap;	// capacity of buffer
+	// pointer to range of storage array.
+	//full storage is [_Myfirst, _Mylast)
+	//buffer is cycle, that is to say, next(_Mylast-1)=_Myfirst, prev(_Myfirst)=_Mylast-1
+	pointer _Myfirst, _Mylast;
 
+	//head and tail of deque
 	//real data is [_Myhead,_Mytail)
-	//buffer d is cycle, that is to say, next(_Mycap-1)=0, prev(0)=_Mycap-1
-	//so if tail<head, data is [head, end, 0, tail)
-	//head point to the first elem  available for read
-	//tail point to the first space available for write
-	difference_type _Myhead, _Mytail;//head and tail of deque
+	//so if tail<head, data is [_Myhead, _Mylast-1, _Myfirst, _Mytail)
+	//head points to the first elem  available for read
+	//tail points to the first space available for write
+	pointer _Myhead, _Mytail;
 };//deque
 
 }//namespace ext{
